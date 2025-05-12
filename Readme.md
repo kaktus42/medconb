@@ -20,13 +20,13 @@
 
 Welcome to the Medical Concept Builder (MedConB), a pioneering tool designed to simplify the complex process of translating medical knowledge into a machine-readable format for studies utilizing Real World Data (RWD)[^1]. As the landscape of healthcare continuously evolves, the ability to efficiently encode medical transactions collected in hospitals and clinics becomes increasingly crucial. MedConB stands at the forefront of this initiative, empowering medical professionals and researchers to create reliable and high-quality studies with ease.
 
+[^1]: Real World Data refers to the information collected during routine medical care, encompassing every transaction that takes place within clinical settings. This data is recorded using various coding ontologies, such as ICD-9, ICD-10, CPRD, SNOMED, and NDC.
+
 ### Medical Concepts
 
 A medical concept generally refers to an idea, definition, or understanding related to health, disease, diagnosis, treatment, or biomedical research. These concepts can range from specific diseases (like diabetes or hypertension) to broader ideas such as public health measures, epidemiology, clinical practice guidelines, or health policy.
 
 In RWD studies a key challenge is to translate medical concepts from the real world into structured and computable formats that can be effectively analyzed and interpreted. This is a process which involves experts from multiple professions - from clinicians over epidemiologists to data specialists - to work closely together. The outcomes range from lists of medical codes (codelists) that are used as e.g. exclusion criteria to complex concepts (sometimes also referred to as phenotypes, ePhenotypes, or phenotype algorithms) that can consist of multiple codelists and lab value criteria in temporal relationship.
-
-[^1]: Real World Data refers to the information collected during routine medical care, encompassing every transaction that takes place within clinical settings. This data is recorded using various coding ontologies, such as ICD-9, ICD-10, CPRD, SNOMED, and NDC.
 
 ### The Challenge
 
