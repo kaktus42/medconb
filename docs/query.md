@@ -1,3 +1,0 @@
-# Query
-
-::: medconb.graphql.query

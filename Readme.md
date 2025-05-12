@@ -50,61 +50,10 @@ Docs are created by mkdocs. For the branch `develop` they are published under th
 
 If you want to see the docs locally (e.g. for a different branch), run `mkdocs serve -a localhost:8099` and go to http://localhost:8099.
 
-## Development Setup
+## Local Deployment
 
-For development, you need _anaconda/miniconda_, _docker_ and _git-lfs_ installed. Then clone the repo.
+For you to check out MedConB quickly, we have a docker compose based setup that gets you started quickly
+to test the tool. All you need is docker and [docker compose](https://docs.docker.com/compose/)
 
-### 1. Create Conda Environment
-
-```bash
-conda env create -n medconb -f environment.dev.fixed.yml
-```
-
-### 2. Start Database Server
-
-```bash
-docker-compose -f docker-compose.dev.yml up
-```
-
-You can now access the database through adminer by going to http://localhost:8091/.
-Choose "PostgreSQL" in System, "db" in Server. The credentials are user: "postgres", pass: "password".
-
-### 3. Prepare databases
-
-To reset the databases, there is a script that can be called by running `make reset-databases-local`.
-It runs `cicd/reset-databases-local.sh`. Open that file and uncomment the three lines that refer to the `ontologies` database.
-Then run the make command.
-
-### 4. Create Config File
-
-1. Copy `backend/config.default.yaml` to `backend/config.yaml`,
-2. uncomment the section `auth.develop`,
-3. set a random `auth.develop.token`.
-
-4. Copy `frontend/assets/config/config.example.json` to `frontend/assets/config/config.json`,
-5. Change the entry `dev_token` to the token you set above.
-
-### 5. Start Backend
-
-Make sure you have the `medconb` conda environment activated.
-
-```bash
-cd backend
-MEDCONBDIR=. uvicorn --reload --factory medconb.app:create_app
-```
-
-You can now access the GraphQL playground at http://localhost:8000/graphql/. In order to send successful requests, you have to put the following into the "HTTP Headers" section (left bottom of the page).
-
-```json
-{
-  "Authorization": "Bearer <the auth.develop.token from config.yaml>"
-}
-```
-
-### 6. Start Frontend
-
-```bash
-cd frontend
-npm ci  # initially and if some dependencies change
-npm start
-```
+Then you can run `docker compose up` to start everything in the background. Once all services are up,
+go to http://localhost:3001 and use the dev login ("Sign in using dev token")
