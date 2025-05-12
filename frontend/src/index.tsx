@@ -35,7 +35,6 @@ import {PersistGate} from 'redux-persist/integration/react'
 import ErrorHandlerContext from './ErrorHandlerContext'
 import {v4 as uuidv4} from 'uuid'
 
-import {InstallOptions, Logger} from 'cloudwatch-front-logger'
 import MainLoader from './components/MainLoader'
 import Witties from './components/Witties'
 import UserAccessGate from './UserAccessGate'
@@ -62,14 +61,6 @@ const config: ApplicationConfig = (() => {
 const init = (upgraded: boolean) => {
   const sessionId = uuidv4()
 
-  const logger = new Logger(
-    config.aws.accessKeyId,
-    config.aws.secretAccessKey,
-    config.aws.region,
-    config.aws.logGroupName,
-  )
-
-  // logger.onError(new Error('This is a test loggggggg'))
   Sentry.init({
     dsn: config.glitchtipDSN,
     initialScope: {
@@ -176,13 +167,11 @@ const init = (upgraded: boolean) => {
           messages.push(err.message)
           console.log(`[GraphQL error]: Message: ${err.message}, Location: ${err.locations}, Path: ${err.path}`)
           Sentry.captureMessage(err.message)
-          logger.onError(err)
         })
       }
       if (err.networkError) {
         messages.push(err.networkError)
         Sentry.captureException(err.networkError)
-        logger.onError(err.networkError)
         console.log(`[Network error]: ${err.networkError}`)
       }
 
@@ -197,36 +186,8 @@ const init = (upgraded: boolean) => {
 
     const errorLink = onError((err) => errorHandler(err, true))
 
-    const setupLogger = useCallback((extraparams?: any) => {
-      const options: InstallOptions = {
-        async logStreamNameResolver() {
-          return `${config.logStreamPrefix}-${sessionId}`
-        },
-      }
-      if (extraparams) {
-        options.messageFormatter = async (e, info = {type: 'unknown'}) => {
-          if (!e.message) {
-            return null
-          }
-
-          return JSON.stringify({
-            message: e.message,
-            timestamp: new Date().getTime(),
-            userAgent: window.navigator.userAgent,
-            host: window.location.host,
-            version: COMMIT_HASH.trim(),
-            ...info,
-            ...extraparams,
-          })
-        }
-      }
-
-      logger.install(options)
-    }, [])
-
     useEffect(() => {
       async function initApp() {
-        setupLogger()
         await newPersistor.restore()
         setPersistor(newPersistor)
         const _client = new ApolloClient({
@@ -264,7 +225,7 @@ const init = (upgraded: boolean) => {
 
     return (
       <ApolloProvider client={client}>
-        <ErrorHandlerContext.Provider value={{onError: uiErrorHandler, setupLogger, sessionId}}>
+        <ErrorHandlerContext.Provider value={{onError: uiErrorHandler, sessionId}}>
           {!!qd.dev_auth && (config.dev_token ?? null !== null) && (
             <ApplicationProvider config={config} apolloCachePersistor={persistor} reduxPersistor={reduxPersistor}>
               <Provider store={store}>

@@ -106,7 +106,7 @@ const router = createHashRouter([
 ])
 
 const App: React.FC<AppProps> = ({upgraded}) => {
-  const {onError, setupLogger} = useContext(ErrorHandlerContext)
+  const {onError} = useContext(ErrorHandlerContext)
   const {config} = useContext(ApplicationContext)
   const {instance} = useMsal()
   const client = useApolloClient()
@@ -136,10 +136,6 @@ const App: React.FC<AppProps> = ({upgraded}) => {
         }
       }
 
-      setupLogger({
-        externalId: res.data.self.externalId,
-        name: res.data.self.name,
-      })
       setAppUserData({
         externalId: res.data.self.externalId,
         name: res.data.self.name,
