@@ -14,13 +14,6 @@ export type ApplicationConfig = {
     }
     scopes: string[]
   }
-  logStreamPrefix: string
-  aws: {
-    accessKeyId: string
-    secretAccessKey: string
-    region: string
-    logGroupName: string
-  }
   maintenance_mode: boolean
   glitchtipDSN: string
   i18n: {

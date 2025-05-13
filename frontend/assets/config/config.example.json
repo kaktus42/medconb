@@ -11,13 +11,6 @@
     },
     "scopes": ["openid", "profile", "your-application-id/API.Access"]
   },
-  "logStreamPrefix": "eu.qa-qa",
-  "aws": {
-    "accessKeyId": "XYZ",
-    "logGroupName": "medconb",
-    "region": "eu-central-1",
-    "secretAccessKey": "ZYX"
-  },
   "maintenance_mode": false,
   "glitchtipDSN": "GLITCHTIP_DSN",
   "i18n": {
