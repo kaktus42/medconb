@@ -1,66 +1,58 @@
-import {useMsal} from '@azure/msal-react'
-import {EventType} from '@azure/msal-browser'
 import {styled} from '@linaria/react'
-import {Button} from 'antd'
-import React, {useCallback, useContext, useEffect} from 'react'
-import MSALContext from './MSALContext'
-import jwt_decode from 'jwt-decode'
+import {Button, Form, Input, Divider} from 'antd'
+import React from 'react'
 import CompanyLogo from '../assets/images/company_logo_color.png'
-import localforage from 'localforage'
-import {ApplicationConfig} from '..'
 
 type LoginScreenProps = {
-  enableDev?: boolean
-  config: ApplicationConfig
+  loginOptions: {dev: boolean; msal: boolean; password: boolean}
+  i18n: Record<string, string>
+  handleMsalLogin: () => void
 }
-const LoginScreen: React.FC<LoginScreenProps> = ({enableDev = false, config}) => {
-  const {instance} = useMsal()
-  const {scopes} = useContext(MSALContext)
-
-  useEffect(() => {
-    const cb = instance.addEventCallback(async (message: any) => {
-      if (message.eventType === EventType.LOGIN_SUCCESS) {
-        const info = jwt_decode<any>(message.payload.accessToken)
-        const storedSub: string | null = await localforage.getItem('__msal_sub')
-
-        if (storedSub && storedSub !== info.sub) {
-          await localforage.removeItem('persist:__MEDCONB__WORKSPACE')
-          await localforage.removeItem('persist:__MEDCONB__CHANGES')
-          await localforage.removeItem('persist:__MEDCONB__UI')
-        }
-        await localforage.setItem('__msal_sub', info.sub)
-      }
-    })
-
-    return () => {
-      if (cb) {
-        instance.removeEventCallback(cb)
-      }
-    }
-  }, [])
-
-  const handleLogin = useCallback(() => {
-    instance.loginPopup({scopes}).catch((e) => {
-      console.error(e)
-    })
-  }, [])
+const LoginScreen: React.FC<LoginScreenProps> = ({loginOptions, i18n, handleMsalLogin}) => {
+  const handleEmailLogin = () => {}
 
   return (
     <LoginRoot>
       <div>
         <Box>
-          <LogoContainer>
-            <img height="100%" src={CompanyLogo} />
-          </LogoContainer>
-          <Button type="primary" onClick={handleLogin}>
-            Sign in using your {config.i18n.companyName} account
-          </Button>
+          {loginOptions.password && (
+            <>
+              <Form layout="horizontal" onFinish={handleEmailLogin} labelCol={{span: 8}} wrapperCol={{span: 16}}>
+                <Form.Item label="Email" name="email" rules={[{required: true, message: 'Please input your email!'}]}>
+                  <Input type="email" placeholder="Enter your email" />
+                </Form.Item>
+                <Form.Item
+                  label="Password"
+                  name="password"
+                  rules={[{required: true, message: 'Please input your password!'}]}>
+                  <Input.Password placeholder="Enter your password" />
+                </Form.Item>
+                <Form.Item wrapperCol={{span: 24}} style={{textAlign: 'center', marginBottom: 0}}>
+                  <Button type="primary" htmlType="submit">
+                    Sign in with Password
+                  </Button>
+                </Form.Item>
+              </Form>
+              <Divider style={{margin: '16px 0'}} />
+            </>
+          )}
+          {loginOptions.msal && (
+            <>
+              <LogoContainer>
+                <img height="100%" src={CompanyLogo} />
+              </LogoContainer>
+              <Button type="primary" onClick={handleMsalLogin} block>
+                Sign in using your {i18n.companyName} account
+              </Button>
+              <Divider style={{margin: '16px 0'}} />
+            </>
+          )}
+          {loginOptions.dev && (
+            <Button block type="text" onClick={() => (document.location.href = '?dev_auth=1')}>
+              Sign in using dev token
+            </Button>
+          )}
         </Box>
-        {enableDev && (
-          <Button block type="text" onClick={() => (document.location.href = '?dev_auth=1')}>
-            Sign in using dev token
-          </Button>
-        )}
       </div>
     </LoginRoot>
   )
