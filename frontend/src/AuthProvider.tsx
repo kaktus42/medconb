@@ -59,19 +59,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
 
   let username = 'Developer'
 
-  switch (loginType) {
-    case 'dev':
-      break
-    case 'msal':
-      const decodedToken: any = jwt_decode(token)
-      username = decodedToken?.name
-      break
-    case 'password':
-      // TODO
-      break
+  if (loginType === 'msal') {
+    const decodedToken: any = jwt_decode(token)
+    username = decodedToken?.name
+  } else if (loginType === 'password') {
+    // TODO
   }
-
-  console.log(loginType, token)
 
   const isDevAuth = loginType == 'dev'
   const isPasswordAuth = loginType == 'password'
