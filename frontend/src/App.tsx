@@ -35,7 +35,7 @@ export type AppProps = {
   upgraded: boolean
 }
 
-const ErrorFallback: React.FC<FallbackProps> = ({error, resetErrorBoundary}) => {
+const ErrorFallback: Sentry.FallbackRender = ({error, resetError}) => {
   const {sessionId} = useContext(ErrorHandlerContext)
   const dispatch = useDispatch()
   return (
@@ -55,9 +55,9 @@ const ErrorFallback: React.FC<FallbackProps> = ({error, resetErrorBoundary}) => 
               dispatch({
                 type: 'medconb/reset',
               })
-              resetErrorBoundary()
+              resetError()
             }}>
-            Reset
+            Reset the app
           </Button>
         </>
       }
@@ -68,7 +68,11 @@ const ErrorFallback: React.FC<FallbackProps> = ({error, resetErrorBoundary}) => 
 const router = createHashRouter([
   {
     path: '/',
-    element: <RootWorkspace />,
+    element: (
+      <Sentry.ErrorBoundary fallback={(props) => React.createElement(ErrorFallback, props)}>
+        <RootWorkspace />
+      </Sentry.ErrorBoundary>
+    ),
     children: [
       {
         id: 'home',
@@ -213,7 +217,7 @@ const App: React.FC<AppProps> = ({upgraded}) => {
 
   return (
     <Sentry.ErrorBoundary
-      fallback={ErrorFallback}
+      fallback={(props) => React.createElement(ErrorFallback, props)}
       // onError={(error: Error, info: {componentStack: string}) => {
       //   onError(error)
       // }}
