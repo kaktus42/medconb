@@ -10,21 +10,18 @@ import {versionCheck} from './versionCheck'
 import {AuthProvider} from './AuthProvider'
 import AppProvider from './AppProvider'
 import {cacheSizes} from '@apollo/client/utilities'
+import {ResultStatusType} from 'antd/lib/result'
 
 cacheSizes['inMemoryCache.executeSelectionSet'] = 1_000_000
 cacheSizes['inMemoryCache.executeSubSelectedArray'] = 500_000
 
-const MaintenanceModeBanner = (
-  <Result status="info" title="I'm currently under maintenance" style={{margin: '0 auto', width: '60%'}} />
+const errorBanner = (text: string, status: ResultStatusType | undefined = 'error') => (
+  <Result status={status} title={text} style={{margin: '0 auto', width: '60%'}} />
 )
 
-const ConfigLoadErrorBanner = (
-  <Result status="error" title="Loading the configuration failed." style={{margin: '0 auto', width: '60%'}} />
-)
-
-const InitErrorBanner = (
-  <Result status="error" title="Initializing the app failed." style={{margin: '0 auto', width: '60%'}} />
-)
+const MaintenanceModeBanner = errorBanner("I'm currently under maintenance", 'info')
+const ConfigLoadErrorBanner = errorBanner('Loading the configuration failed')
+const InitErrorBanner = errorBanner('Initializing the app failed')
 
 const initApp = async () => {
   const configTry = tryGetConfig()
