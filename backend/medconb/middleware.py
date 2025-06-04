@@ -74,9 +74,7 @@ class AuthBackend(AuthenticationBackend):
 
         if config["password"].exists():
             logger.info("Authorization method 'password' is enabled")
-            self.authenticators.append(
-                PasswordAuthenticator(config["password"], session)
-            )
+            self.authenticators.append(PasswordAuthenticator(config["password"]))
 
         if config["develop"].exists():
             logger.info("Authorization method 'develop' is enabled")
@@ -174,7 +172,7 @@ class DevAuthenticator:
 
 
 class PasswordAuthenticator:
-    def __init__(self, config, session: Session):
+    def __init__(self, config):
         self._secret = config["secret"].get(str)
 
         if not self._secret:
@@ -305,16 +303,9 @@ class AzureADAuthenticator:
             claims = self._extract_claims(token)
             self._credentials = AuthCredentials(["authenticated"])
             self._user = self._load_user(conn_session, claims)
-        except errors.DecodeError:
-            print(f"Unable to decode Bearer Token: '{token}'")
+        except Exception as e:
+            print(f"Unable to decode Bearer Token: '{e} :: {token}'")
             self._error = AuthenticationError("Unable to decode Bearer token")
-        except (
-            errors.InvalidClaimError,
-            errors.MissingClaimError,
-            errors.ExpiredTokenError,
-        ) as e:
-            print(f"Unable to decode Bearer Token: '{e.description} :: {token}'")
-            self._error = AuthenticationError(e.description)
 
     def _extract_claims(self, token) -> JWTClaims:
         """

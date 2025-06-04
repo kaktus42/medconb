@@ -1,6 +1,6 @@
 import {createContext, PropsWithChildren, useEffect, useState} from 'react'
 
-import {ApplicationConfig, getConfig, MsalConfig} from './config'
+import {ApplicationConfig, getConfig} from './config'
 import LoginScreen from './LoginScreen'
 import {MsalProvider} from '@azure/msal-react'
 import {
@@ -10,7 +10,6 @@ import {
   IPublicClientApplication,
 } from '@azure/msal-browser'
 import jwt_decode from 'jwt-decode'
-import {AnyIfEmpty} from 'react-redux'
 import localforage from 'localforage'
 import {get} from 'lodash'
 
@@ -26,23 +25,42 @@ export type AuthProviderProps = PropsWithChildren<{}>
 export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
   const [token, setToken] = useState('')
   const [loginType, setLoginType] = useState('')
+  const [passwordLoginFailed, setPasswordLoginFailed] = useState(false)
 
   const config = getConfig()
-  const authData = setupAuth(config)
-  const msalInstance = authData.msalInstance
+  const msalInstance = setupMsalAuth(config)
 
-  const getTokenAsync = async () => await asyncTokenLookup(msalInstance, config)
+  const getLoginInfoAsync = async () => {
+    if (config.loginOptions.dev && config.dev_token && qd.dev_auth) {
+      return {token: config.dev_token, type: 'dev'}
+    }
+
+    if (config.loginOptions.msal && msalInstance) {
+      if (!config.msal) throw new Error('MSAL auth is enabled but config is not given')
+      return {token: await getMsalToken(msalInstance, config.msal.scopes), type: 'msal'}
+    }
+
+    if (config.loginOptions.password) {
+      return {token, type: 'password'}
+    }
+
+    return {token: '', type: ''}
+  }
+
+  const getTokenAsync = async () => (await getLoginInfoAsync())?.token
 
   useEffect(() => {
-    async function getToken() {
-      const loginInfo = await asyncLogin(msalInstance, config)
+    // this tries to get a token from the existing state, as there might
+    // be an active msal session.
+    async function _getToken() {
+      const loginInfo = await getLoginInfoAsync()
       if (loginInfo.token) {
         setToken(loginInfo.token)
         setLoginType(loginInfo.type)
       }
     }
 
-    if (!token) getToken()
+    if (!token) _getToken()
   }, [])
 
   if (!token) {
@@ -54,16 +72,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
       else console.error('MSAL not configured properly')
     }
 
-    return <LoginScreen loginOptions={config.loginOptions} i18n={config.i18n} handleMsalLogin={handleMsalLogin} />
+    const handlePasswordLogin = (email: string, password: string) => {
+      const graphql_endpoint = config.graphql_endpoints[0]
+
+      const xmlHttp = new XMLHttpRequest()
+      xmlHttp.open('POST', graphql_endpoint, false)
+      xmlHttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8')
+      xmlHttp.send(
+        JSON.stringify({
+          operationName: 'login',
+          variables: {email, password},
+          query:
+            'mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token } }',
+        }),
+      )
+
+      const response = JSON.parse(xmlHttp.responseText)
+      const token = response?.data?.login?.token
+
+      if (token) {
+        setToken(token)
+        setLoginType('password')
+      } else {
+        console.error('Login failed', response)
+        setPasswordLoginFailed(true)
+      }
+    }
+
+    return (
+      <LoginScreen
+        loginOptions={config.loginOptions}
+        i18n={config.i18n}
+        handleMsalLogin={handleMsalLogin}
+        handlePasswordLogin={handlePasswordLogin}
+        passwordLoginMessage={passwordLoginFailed ? 'Login failed. Please check your credentials.' : undefined}
+      />
+    )
   }
 
   let username = 'Developer'
 
-  if (loginType === 'msal') {
+  if (['msal', 'password'].includes(loginType)) {
     const decodedToken: any = jwt_decode(token)
     username = decodedToken?.name
-  } else if (loginType === 'password') {
-    // TODO
   }
 
   const isDevAuth = loginType == 'dev'
@@ -83,41 +134,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
   )
 }
 
-const setupAuth = (config: ApplicationConfig) => {
-  let authData: AuthData = {msalInstance: null}
-
-  if (config.loginOptions.msal) {
-    if (!config.msal) throw new Error('MSAL auth is enabled but config is not given')
-
-    let msalInstance = new PublicClientApplication({
-      auth: {...config.msal.auth, redirectUri: `${window.location.protocol}//${window.location.host}`},
-      cache: {
-        cacheLocation: 'sessionStorage',
-        storeAuthStateInCookie: false,
-      },
-    })
-
-    msalInstance.addEventCallback(async (message: any) => {
-      if (message.eventType === EventType.LOGIN_SUCCESS) {
-        const info = jwt_decode<any>(message.payload.accessToken)
-        console.log(await localforage.getItem('__msal_sub'))
-        const storedSub: string | null = await localforage.getItem('__msal_sub')
-
-        if (storedSub && storedSub !== info.sub) {
-          await localforage.removeItem('persist:__MEDCONB__WORKSPACE')
-          await localforage.removeItem('persist:__MEDCONB__CHANGES')
-          await localforage.removeItem('persist:__MEDCONB__UI')
-        }
-        await localforage.setItem('__msal_sub', info.sub)
-      }
-    })
-
-    authData.msalInstance = msalInstance
-  }
-
-  return authData
-}
-
 const qd = {} as Record<string, string>
 if (location.search)
   location.search
@@ -128,6 +144,37 @@ if (location.search)
       v = v && decodeURIComponent(v)
       ;(qd[k] = qd[k] || []).push(v)
     })
+
+const setupMsalAuth = (config: ApplicationConfig) => {
+  if (!config.loginOptions.msal) return null
+  if (!config.msal) throw new Error('MSAL auth is enabled but config is not given')
+
+  let msalInstance = new PublicClientApplication({
+    auth: {...config.msal.auth, redirectUri: `${window.location.protocol}//${window.location.host}`},
+    cache: {
+      cacheLocation: 'sessionStorage',
+      storeAuthStateInCookie: false,
+    },
+  })
+
+  msalInstance.addEventCallback(async (message: any) => {
+    if (message.eventType === EventType.LOGIN_SUCCESS) {
+      const info = jwt_decode<any>(message.payload.accessToken)
+      console.log(await localforage.getItem('__msal_sub'))
+      const storedSub: string | null = await localforage.getItem('__msal_sub')
+
+      // TODO: do this user check for all other login types
+      if (storedSub && storedSub !== info.sub) {
+        await localforage.removeItem('persist:__MEDCONB__WORKSPACE')
+        await localforage.removeItem('persist:__MEDCONB__CHANGES')
+        await localforage.removeItem('persist:__MEDCONB__UI')
+      }
+      await localforage.setItem('__msal_sub', info.sub)
+    }
+  })
+
+  return msalInstance
+}
 
 const getMsalToken = async (instance: IPublicClientApplication, scopes: string[]) => {
   const accounts = instance.getAllAccounts()
@@ -147,33 +194,4 @@ const getMsalToken = async (instance: IPublicClientApplication, scopes: string[]
     }
   }
   return ''
-}
-
-const getPasswordToken = async () => {
-  return ''
-}
-
-const asyncTokenLookup = async (instance: IPublicClientApplication | null, config: ApplicationConfig) => {
-  return (await asyncLogin(instance, config))?.token
-}
-
-const asyncLogin = async (
-  instance: IPublicClientApplication | null,
-  config: ApplicationConfig,
-): Promise<{token: string; type: string}> => {
-  // todo: remove
-  if (config.loginOptions.dev && config.dev_token && qd.dev_auth) {
-    return {token: config.dev_token, type: 'dev'}
-  }
-
-  if (config.loginOptions.msal && instance) {
-    if (!config.msal) throw new Error('MSAL auth is enabled but config is not given')
-    return {token: await getMsalToken(instance, config.msal.scopes), type: 'msal'}
-  }
-
-  if (config.loginOptions.password) {
-    return {token: await getPasswordToken(), type: 'password'}
-  }
-
-  return {token: '', type: ''}
 }

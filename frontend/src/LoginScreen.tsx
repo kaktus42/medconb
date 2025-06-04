@@ -3,13 +3,30 @@ import {Button, Form, Input, Divider} from 'antd'
 import React from 'react'
 import CompanyLogo from '../assets/images/company_logo_color.png'
 
+type PasswordLoginFormValues = {
+  email: string
+  password: string
+}
+
 type LoginScreenProps = {
   loginOptions: {dev: boolean; msal: boolean; password: boolean}
   i18n: Record<string, string>
   handleMsalLogin: () => void
+  handlePasswordLogin: (email: string, password: string) => void
+  passwordLoginMessage?: string
 }
-const LoginScreen: React.FC<LoginScreenProps> = ({loginOptions, i18n, handleMsalLogin}) => {
-  const handleEmailLogin = () => {}
+const LoginScreen: React.FC<LoginScreenProps> = ({
+  loginOptions,
+  i18n,
+  handleMsalLogin,
+  handlePasswordLogin,
+  passwordLoginMessage,
+}) => {
+  const [form] = Form.useForm()
+
+  const _handleEmailLogin = (values: PasswordLoginFormValues) => {
+    handlePasswordLogin(values.email, values.password)
+  }
 
   return (
     <LoginRoot>
@@ -17,7 +34,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({loginOptions, i18n, handleMsal
         <Box>
           {loginOptions.password && (
             <>
-              <Form layout="horizontal" onFinish={handleEmailLogin} labelCol={{span: 8}} wrapperCol={{span: 16}}>
+              <Form
+                form={form}
+                layout="horizontal"
+                onFinish={_handleEmailLogin}
+                labelCol={{span: 8}}
+                wrapperCol={{span: 16}}>
                 <Form.Item label="Email" name="email" rules={[{required: true, message: 'Please input your email!'}]}>
                   <Input type="email" placeholder="Enter your email" />
                 </Form.Item>
@@ -27,6 +49,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({loginOptions, i18n, handleMsal
                   rules={[{required: true, message: 'Please input your password!'}]}>
                   <Input.Password placeholder="Enter your password" />
                 </Form.Item>
+                {passwordLoginMessage && (
+                  <Form.Item wrapperCol={{span: 24}}>
+                    <div style={{color: 'red', textAlign: 'center'}}>{passwordLoginMessage}</div>
+                  </Form.Item>
+                )}
                 <Form.Item wrapperCol={{span: 24}} style={{textAlign: 'center', marginBottom: 0}}>
                   <Button type="primary" htmlType="submit">
                     Sign in with Password
