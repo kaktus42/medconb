@@ -76,6 +76,10 @@ const Box = styled.div`
   flex-direction: column;
   padding: 20px;
   justify-content: center;
+
+  > .ant-divider:last-child {
+    display: none;
+  }
 `
 
 const LogoContainer = styled.div`
