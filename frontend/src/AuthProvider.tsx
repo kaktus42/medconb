@@ -26,6 +26,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
   const [token, setToken] = useState('')
   const [loginType, setLoginType] = useState('')
   const [passwordLoginFailed, setPasswordLoginFailed] = useState(false)
+  const [registrationErrorMsg, setRegistrationErrorMsg] = useState('')
 
   const config = getConfig()
   const msalInstance = setupMsalAuth(config)
@@ -99,6 +100,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
       }
     }
 
+    const handleRegister = (email: string, password: string, name: string) => {
+      const graphql_endpoint = config.graphql_endpoints[0]
+
+      const xmlHttp = new XMLHttpRequest()
+      xmlHttp.open('POST', graphql_endpoint, false)
+      xmlHttp.setRequestHeader('Content-Type', 'application/json;charset=UTF-8')
+      xmlHttp.send(
+        JSON.stringify({
+          operationName: 'registerUser',
+          variables: {email, password, name},
+          query:
+            'mutation registerUser($email: String!, $password: String!, $name: String!) { registerUser(email: $email, password: $password, name: $name) }',
+        }),
+      )
+
+      const response = JSON.parse(xmlHttp.responseText)
+      if (response?.data?.registerUser) {
+        setRegistrationErrorMsg('')
+        handlePasswordLogin(email, password)
+      } else {
+        console.error('Registration failed', response)
+        setRegistrationErrorMsg('Registration failed. Please try again.')
+      }
+    }
+
     return (
       <LoginScreen
         loginOptions={config.loginOptions}
@@ -106,6 +132,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
         handleMsalLogin={handleMsalLogin}
         handlePasswordLogin={handlePasswordLogin}
         passwordLoginMessage={passwordLoginFailed ? 'Login failed. Please check your credentials.' : undefined}
+        handleRegister={handleRegister}
+        registrationMessage={registrationErrorMsg}
       />
     )
   }

@@ -14,6 +14,8 @@ type LoginScreenProps = {
   handleMsalLogin: () => void
   handlePasswordLogin: (email: string, password: string) => void
   passwordLoginMessage?: string
+  handleRegister: (email: string, password: string, name: string) => void
+  registrationMessage?: string
 }
 const LoginScreen: React.FC<LoginScreenProps> = ({
   loginOptions,
@@ -21,18 +23,30 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
   handleMsalLogin,
   handlePasswordLogin,
   passwordLoginMessage,
+  handleRegister,
+  registrationMessage,
 }) => {
   const [form] = Form.useForm()
+  const [registerForm] = Form.useForm()
+  const [isRegister, setIsRegister] = React.useState(false)
 
   const _handleEmailLogin = (values: PasswordLoginFormValues) => {
     handlePasswordLogin(values.email, values.password)
+  }
+
+  const _handleRegister = (values: PasswordLoginFormValues & {confirm: string}) => {
+    if (values.password !== values.confirm) {
+      registerForm.setFields([{name: 'confirm', errors: ['Passwords do not match!']}])
+      return
+    }
+    handleRegister(values.email, values.password, values.name)
   }
 
   return (
     <LoginRoot>
       <div>
         <Box>
-          {loginOptions.password && (
+          {loginOptions.password && !isRegister && (
             <>
               <Form
                 form={form}
@@ -59,11 +73,72 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                     Sign in with Password
                   </Button>
                 </Form.Item>
+                <Form.Item wrapperCol={{span: 24}} style={{textAlign: 'center', marginBottom: 0}}>
+                  <Button type="link" onClick={() => setIsRegister(true)}>
+                    Register new account
+                  </Button>
+                </Form.Item>
               </Form>
               <Divider style={{margin: '16px 0'}} />
             </>
           )}
-          {loginOptions.msal && (
+          {loginOptions.password && isRegister && (
+            <>
+              <Form
+                form={registerForm}
+                layout="horizontal"
+                onFinish={_handleRegister}
+                labelCol={{span: 8}}
+                wrapperCol={{span: 16}}>
+                <Form.Item
+                  initialValue="Bob"
+                  label="Name"
+                  name="name"
+                  rules={[{required: true, message: 'Please input your name!'}]}>
+                  <Input type="text" placeholder="Enter your name" />
+                </Form.Item>
+                <Form.Item
+                  initialValue="bob@example.com"
+                  label="Email"
+                  name="email"
+                  rules={[{required: true, message: 'Please input your email!'}]}>
+                  <Input type="email" placeholder="Enter your email" />
+                </Form.Item>
+                <Form.Item
+                  initialValue="123"
+                  label="Password"
+                  name="password"
+                  rules={[{required: true, message: 'Please input your password!'}]}>
+                  <Input.Password placeholder="Enter your password" />
+                </Form.Item>
+                <Form.Item
+                  initialValue="123"
+                  label="Confirm"
+                  name="confirm"
+                  dependencies={['password']}
+                  rules={[{required: true, message: 'Please confirm your password!'}]}>
+                  <Input.Password placeholder="Confirm your password" />
+                </Form.Item>
+                {registrationMessage && (
+                  <Form.Item wrapperCol={{span: 24}}>
+                    <div style={{color: 'red', textAlign: 'center'}}>{registrationMessage}</div>
+                  </Form.Item>
+                )}
+                <Form.Item wrapperCol={{span: 24}} style={{textAlign: 'center', marginBottom: 0}}>
+                  <Button type="primary" htmlType="submit">
+                    Register
+                  </Button>
+                </Form.Item>
+                <Form.Item wrapperCol={{span: 24}} style={{textAlign: 'center', marginBottom: 0}}>
+                  <Button type="link" onClick={() => setIsRegister(false)}>
+                    Back to Login
+                  </Button>
+                </Form.Item>
+              </Form>
+              <Divider style={{margin: '16px 0'}} />
+            </>
+          )}
+          {loginOptions.msal && !isRegister && (
             <>
               <LogoContainer>
                 <img height="100%" src={CompanyLogo} />
@@ -74,7 +149,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
               <Divider style={{margin: '16px 0'}} />
             </>
           )}
-          {loginOptions.dev && (
+          {loginOptions.dev && !isRegister && (
             <Button block type="text" onClick={() => (document.location.href = '?dev_auth=1')}>
               Sign in using dev token
             </Button>
