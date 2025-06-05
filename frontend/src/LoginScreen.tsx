@@ -2,10 +2,18 @@ import {styled} from '@linaria/react'
 import {Button, Form, Input, Divider} from 'antd'
 import React from 'react'
 import CompanyLogo from '../assets/images/company_logo_color.png'
+import MCBLogo from '../assets/images/MCBLogo@2x.png'
 
 type PasswordLoginFormValues = {
   email: string
   password: string
+}
+
+type RegistrationFormValues = {
+  email: string
+  password: string
+  confirm: string
+  name: string
 }
 
 type LoginScreenProps = {
@@ -34,7 +42,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     handlePasswordLogin(values.email, values.password)
   }
 
-  const _handleRegister = (values: PasswordLoginFormValues & {confirm: string}) => {
+  const _handleRegister = (values: RegistrationFormValues) => {
     if (values.password !== values.confirm) {
       registerForm.setFields([{name: 'confirm', errors: ['Passwords do not match!']}])
       return
@@ -46,6 +54,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     <LoginRoot>
       <div>
         <Box>
+          <LogoContainer66px>
+            <img height="100%" src={MCBLogo} />
+          </LogoContainer66px>
+          <Divider style={{margin: '16px 0'}} />
           {loginOptions.password && !isRegister && (
             <>
               <Form
@@ -140,9 +152,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
           )}
           {loginOptions.msal && !isRegister && (
             <>
-              <LogoContainer>
+              <LogoContainer100px>
                 <img height="100%" src={CompanyLogo} />
-              </LogoContainer>
+              </LogoContainer100px>
               <Button type="primary" onClick={handleMsalLogin} block>
                 Sign in using your {i18n.companyName} account
               </Button>
@@ -184,8 +196,14 @@ const Box = styled.div`
   }
 `
 
-const LogoContainer = styled.div`
+const LogoContainer100px = styled.div`
   height: 100px;
+  text-align: center;
+  margin-bottom: 20px;
+`
+
+const LogoContainer66px = styled.div`
+  height: 66px;
   text-align: center;
   margin-bottom: 20px;
 `
