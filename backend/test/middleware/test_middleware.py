@@ -358,7 +358,6 @@ class TestPasswordAuthenticator:
         payload = {"sub": "user-123"}
         token = jwt.encode(payload, "test_secret", algorithm="HS256")
 
-        init_session = MagicMock(Session)
         conn_session = MagicMock(Session)
         user = d.User(
             id="user-123",
@@ -370,7 +369,7 @@ class TestPasswordAuthenticator:
         )
         conn_session.user_repository.get.return_value = user
 
-        authenticator = PasswordAuthenticator(config, init_session)
+        authenticator = PasswordAuthenticator(config)
         authenticator.authenticate(conn_session, token)
 
         assert authenticator.user == user
@@ -379,10 +378,9 @@ class TestPasswordAuthenticator:
         conn_session.user_repository.get.assert_called_once_with("user-123")
 
     def test_invalid_token(self, config):
-        init_session = MagicMock(Session)
         conn_session = MagicMock(Session)
 
-        authenticator = PasswordAuthenticator(config, init_session)
+        authenticator = PasswordAuthenticator(config)
         authenticator.authenticate(conn_session, "not_a_jwt_token")
 
         assert authenticator.user is None
@@ -394,11 +392,10 @@ class TestPasswordAuthenticator:
         payload = {"sub": "user-456"}
         token = jwt.encode(payload, "test_secret", algorithm="HS256")
 
-        init_session = MagicMock(Session)
         conn_session = MagicMock(Session)
         conn_session.user_repository.get.return_value = None
 
-        authenticator = PasswordAuthenticator(config, init_session)
+        authenticator = PasswordAuthenticator(config)
         authenticator.authenticate(conn_session, token)
 
         assert authenticator.user is None
@@ -412,10 +409,9 @@ class TestPasswordAuthenticator:
         payload = {"sub": "user-789", "exp": int(time.time()) - 10}
         token = jwt.encode(payload, "test_secret", algorithm="HS256")
 
-        init_session = MagicMock(Session)
         conn_session = MagicMock(Session)
 
-        authenticator = PasswordAuthenticator(config, init_session)
+        authenticator = PasswordAuthenticator(config)
         authenticator.authenticate(conn_session, token)
 
         assert authenticator.user is None
@@ -428,10 +424,9 @@ class TestPasswordAuthenticator:
         payload = {"sub": "user-999"}
         wrong_secret_token = jwt.encode(payload, "wrong_secret", algorithm="HS256")
 
-        init_session = MagicMock(Session)
         conn_session = MagicMock(Session)
 
-        authenticator = PasswordAuthenticator(config, init_session)
+        authenticator = PasswordAuthenticator(config)
         authenticator.authenticate(conn_session, wrong_secret_token)
 
         assert authenticator.user is None
@@ -444,12 +439,11 @@ class TestPasswordAuthenticator:
         config["secret"] = ""
 
         with pytest.raises(ValueError) as excinfo:
-            PasswordAuthenticator(config, MagicMock(Session))
+            PasswordAuthenticator(config)
         assert "Password based Login is misconfigured." in str(excinfo.value)
 
     def test_forgot_call_authenticate(self, config):
-        init_session = MagicMock(Session)
-        authenticator = PasswordAuthenticator(config, init_session)
+        authenticator = PasswordAuthenticator(config)
 
         with pytest.raises(Exception) as excinfo:
             authenticator.user

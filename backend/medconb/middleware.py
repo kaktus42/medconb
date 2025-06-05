@@ -29,7 +29,7 @@ from .types import Session, sessionmaker
 
 # import only for typing
 if typing.TYPE_CHECKING:
-    from confuse import Configuration
+    from confuse import ConfigView
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class Authenticator(Protocol):  # pragma: no cover
 
 
 class AuthBackend(AuthenticationBackend):
-    def __init__(self, config: "Configuration", session: Session):
+    def __init__(self, config: "ConfigView", session: Session):
         self.authenticators: list[Authenticator] = []
 
         if config["ad"].exists():
@@ -172,7 +172,7 @@ class DevAuthenticator:
 
 
 class PasswordAuthenticator:
-    def __init__(self, config):
+    def __init__(self, config: "ConfigView"):
         self._secret = config["secret"].get(str)
 
         if not self._secret:
@@ -226,7 +226,7 @@ class AzureADAuthenticator:
         name: str
         mapped_to: str
 
-    def __init__(self, config: "Configuration", session: Session):
+    def __init__(self, config: "ConfigView", session: Session):
         template = confuse.Sequence({"name": str, "mapped_to": str})
         extra_claims = [self.ClaimsConfig(**c) for c in config["claims"].get(template)]
 
