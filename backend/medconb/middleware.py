@@ -186,7 +186,7 @@ class PasswordAuthenticator:
         try:
             payload = jwt.decode(token, self._secret, algorithms=["HS256"])
         except Exception as e:
-            print(f"Unable to decode Bearer Token: '{str(e)} :: {token}'")
+            print(f"Unable to decode Bearer Token: '{str(e)} :: {token[:8]}...'")
             self._error = AuthenticationError("Invalid Bearer token")
             return
 
@@ -304,7 +304,7 @@ class AzureADAuthenticator:
             self._credentials = AuthCredentials(["authenticated"])
             self._user = self._load_user(conn_session, claims)
         except Exception as e:
-            print(f"Unable to decode Bearer Token: '{e} :: {token}'")
+            print(f"Unable to decode Bearer Token: '{e} :: {token[:8]}...'")
             self._error = AuthenticationError("Unable to decode Bearer token")
 
     def _extract_claims(self, token) -> JWTClaims:
