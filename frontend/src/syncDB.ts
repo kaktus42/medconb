@@ -23,23 +23,27 @@ const syncDB = async ({baseUrl, tokenLookup, onProgress}: syncDBOptions) => {
     },
   })
   const manifest: Manifest = (await manifestReq.json()) as Manifest
+
+  const countChecks = await Promise.all(
+    manifest.files.map(
+      async (entry) => entry.num_codes == (await db.codes.where({ontology_id: entry.ontology_id}).count()),
+    ),
+  )
+  const allCountsCorrect = countChecks.every(Boolean)
+  if (allCountsCorrect) return
+
   onProgress?.(0)
   let progress = 0
 
+  // if there is any mismatch, clear and load everything again.
+  await db.codes.clear()
+  await db.ontologies.clear()
+
   const totalCount = manifest.files.reduce((i, e) => i + e.num_codes, 0)
 
-  for await (const entry of manifest.files) {
-    const _cnt = await db.codes.where({ontology_id: entry.ontology_id}).count()
-    if (_cnt === entry.num_codes) {
-      onProgress?.(Math.round((_cnt / totalCount) * 100))
-      continue
-    }
-
-    const token = await tokenLookup()
+  const _syncResults = manifest.files.map(async (entry) => {
     const req = await fetch(`${baseUrl}assets/${entry.name}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: {Authorization: `Bearer ${token}`},
     })
 
     const blob = await req.blob()
@@ -49,35 +53,40 @@ const syncDB = async ({baseUrl, tokenLookup, onProgress}: syncDBOptions) => {
     const [countStream, processStream] = textStream.tee()
 
     let cnt = 0
-    const csvStream = countStream.pipeThrough<LocalCode[]>(new CSVTransformStream())
-    for await (const strChunk of csvStream) {
+    const csvStreamCount = countStream.pipeThrough<LocalCode[]>(new CSVTransformStream())
+    for await (const strChunk of csvStreamCount) {
       cnt += strChunk.length
     }
 
-    if (cnt === entry.num_codes) {
-      // build ontology
-      const ontology: Partial<LocalOntology> = {}
-      ontology.root_code_ids = []
-      const csvStream = processStream.pipeThrough<LocalCode[]>(new CSVTransformStream(true))
+    if (cnt !== entry.num_codes) return false
 
-      let cx = 0
-      for await (const x of csvStream) {
-        if (!ontology.name) {
-          ontology.name = x[0].ontology_id
-        }
-        ontology.root_code_ids.push(...x.filter((c) => c.path.length === 1).map((c) => c.id))
-        cx += x.length
-        progress += x.length
-        onProgress?.(Math.round((progress / totalCount) * 100))
-        await db.codes.bulkPut(x)
+    // build ontology
+    const ontology: Partial<LocalOntology> = {}
+    ontology.root_code_ids = []
+    const csvStream = processStream.pipeThrough<LocalCode[]>(new CSVTransformStream(true))
+
+    let cx = 0
+    for await (const x of csvStream) {
+      if (!ontology.name) {
+        ontology.name = x[0].ontology_id
       }
-
-      await db.ontologies.put(ontology as LocalOntology)
-      console.log('inserted: ', cx, 'actual:', cnt)
-    } else {
-      throw new DBSyncError('SYNC_DB_MISMATCH')
+      ontology.root_code_ids.push(...x.filter((c) => c.path.length === 1).map((c) => c.id))
+      cx += x.length
+      progress += x.length
+      onProgress?.(Math.round((progress / totalCount) * 100))
+      await db.codes.bulkPut(x)
     }
-  }
+
+    await db.ontologies.put(ontology as LocalOntology)
+    console.log('inserted: ', cx, 'actual:', cnt)
+
+    return true
+  })
+
+  const syncResults = await Promise.all(_syncResults)
+  const allSyncCorrect = syncResults.every(Boolean)
+  if (!allSyncCorrect) throw new DBSyncError('SYNC_DB_MISMATCH')
+
   onProgress?.(100)
 }
 
