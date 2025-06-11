@@ -16,6 +16,7 @@ type ArrayElement<ArrayType extends readonly unknown[]> = ArrayType extends read
 type RegexInputProps = {
   onChange: (pattern: string | null, mode: Mode) => void
   onEnter: () => void
+  onClear: () => void
   value: string
   mode: Mode
 }
@@ -62,7 +63,7 @@ const processElement = (element: Element, parts: string[]) => {
   }
 }
 
-const RegexInput: React.FC<RegexInputProps> = ({onChange, value, mode, onEnter}) => {
+const RegexInput: React.FC<RegexInputProps> = ({onChange, value, mode, onClear, onEnter}) => {
   const {hashId} = useToken()
   const rootRef = useRef<HTMLDivElement>(null)
   const [metaKeyActive, setMetaKeyActive] = useState(false)
@@ -191,11 +192,11 @@ const RegexInput: React.FC<RegexInputProps> = ({onChange, value, mode, onEnter})
         onClick={() => onChange(value, mode === Mode.POSIX ? Mode.ILIKE : Mode.POSIX)}
         style={{color: `rgba(0, 0, 0, ${mode === Mode.POSIX ? 1 : 0.25})`}}
         component={RegexIcon}
-        aria-label='toggle regex mode'
+        aria-label="toggle regex mode"
       />
       {value.trim().length > 0 && (
         <ClearIcon className="ant-input-suffix">
-          <CloseCircleFilled onClick={() => onChange('', mode)} />
+          <CloseCircleFilled onClick={onClear} />
         </ClearIcon>
       )}
     </Root>

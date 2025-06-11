@@ -21,6 +21,16 @@ const FilterComponent: React.FC<FilterComponentProps> = ({onFilterChange, value}
     setInternalValue(value)
   }, [value])
 
+  const clearSearch = () => {
+    setInternalValue({...iv, description: ''})
+    onFilterChange({...iv, description: ''}) // not iv, because state is not yet updated
+  }
+
+  const clearRegex = () => {
+    setInternalValue({...iv, code: ''})
+    onFilterChange({...iv, code: ''}) // not iv, because state is not yet updated
+  }
+
   return (
     <Root>
       <Space>
@@ -29,6 +39,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({onFilterChange, value}
             setInternalValue({...iv, mode, code: code ?? ''})
           }}
           onEnter={() => onFilterChange(iv)}
+          onClear={clearRegex}
           mode={iv.mode}
           value={iv.code}
         />
@@ -41,6 +52,7 @@ const FilterComponent: React.FC<FilterComponentProps> = ({onFilterChange, value}
           value={iv.description}
           allowClear
           onPressEnter={() => onFilterChange(iv)}
+          onClear={clearSearch}
         />
         <Button
           onClick={() => {
