@@ -1,17 +1,19 @@
 import Icon, {EllipsisOutlined} from '@ant-design/icons'
 import {useApolloClient, useLazyQuery} from '@apollo/client'
 import {styled} from '@linaria/react'
-import {Button, Col, Dropdown, Row, Skeleton, Space, Spin, Switch} from 'antd'
+import {Button, Col, Dropdown, Row, Space, Spin, Switch} from 'antd'
 import {ItemType} from 'antd/lib/menu/hooks/useItems'
 import {useLiveQuery} from 'dexie-react-hooks'
-import {flatten, isEmpty, keys, some, uniq, values, cloneDeep} from 'lodash'
+import {cloneDeep, flatten, isEmpty, keys, some, uniq, values} from 'lodash'
 import {MenuInfo} from 'rc-menu/lib/interface'
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useDispatch, useSelector} from 'react-redux'
-import {Codelist, IndicatorIndex, LocalCode} from '..'
+import {Codelist, IndicatorIndex, LocalCode, LocalOntology} from '..'
 import ConceptIndicator from './components/ConceptIndicator'
+import MainLoader from './components/MainLoader'
 import SelectOntology from './components/SelectOntology'
 import {CloseIcon, FilterIcon} from './customIcons'
+import {db} from './db'
 import FilterComponent, {Filter} from './FilterComponent'
 import {FETCH_CODE_LIST, SEARCH_CODES} from './graphql'
 import OntologyListView from './OntologyListView'
@@ -32,7 +34,6 @@ import {
 import {calculateFilteredCodes} from './treeUtils'
 import {combineLatest} from './utils'
 import VirtualCodeTree, {VCodeTreeHandle} from './VirtualCodeTree'
-import {db} from './db'
 
 type OntologyViewerProps = {
   // ontologies: Ontology[]
@@ -46,9 +47,13 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
   const dispatch = useDispatch()
   const client = useApolloClient()
   const [chunks, setChunks] = useState(0)
+  const [codesAreStale, setCodesAreStale] = useState(false)
   const ontologies = useLiveQuery(() => db.ontologies.toArray())
   const codes = useLiveQuery(() => {
-    return db.codes.where({ontology_id: pane.ontology}).toArray()
+    return db.codes
+      .where({ontology_id: pane.ontology})
+      .toArray()
+      .finally(() => setCodesAreStale(false))
   }, [pane.ontology])
   const ontology = (ontologies ?? []).find((o) => o.name === pane.ontology)
 
@@ -59,6 +64,11 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
 
   const indicators = useSelector((state: RootState) => state.workspace.indicators)
   const openConcepts = useSelector((state: RootState) => state.workspace.openCodelists)
+
+  const onSelectOntology = (onto: LocalOntology) => {
+    setCodesAreStale(true) // made unstale in `useLiveQuery` for codes
+    dispatch(setPaneOntology({paneId: pane.id, ontology: onto.name}))
+  }
 
   useEffect(() => {
     if (openConcepts.length === 0) {
@@ -363,10 +373,14 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
     }
   }, [pane.filter, pane.ontology, openConcepts, ontology])
 
-  if (!ontology) {
+  const allReady = !!ontologies && !!ontology && !codesAreStale
+
+  if (!allReady) {
     return (
       <Root>
-        <Skeleton />
+        <MainLoader>
+          <Spin size="large" />
+        </MainLoader>
       </Root>
     )
   }
@@ -377,11 +391,7 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
       <Header>
         <Toolbar>
           <Space data-tour-target="__ontology-selector__">
-            <SelectOntology
-              onChange={(onto) => dispatch(setPaneOntology({paneId: pane.id, ontology: onto.name}))}
-              value={ontology}
-              ontologies={ontologies ?? []}
-            />
+            <SelectOntology onChange={onSelectOntology} value={ontology} ontologies={ontologies} />
             {openConcepts.map((entry, i) => {
               return (
                 <ConceptIndicator

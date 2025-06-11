@@ -14,9 +14,9 @@ type SelectOntologyProps = {
 }
 
 const SelectOntology: React.FC<SelectOntologyProps> = ({ontologies, value, onChange}) => {
-  const handleMenuClick = useCallback((info: MenuInfo) => {
+  const handleMenuClick = (info: MenuInfo) => {
     onChange(find(ontologies, {name: info.key}) as LocalOntology)
-  }, [])
+  }
 
   const items = useMemo(
     () =>

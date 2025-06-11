@@ -3,7 +3,7 @@ import {CaretDownOutlined, CaretRightOutlined} from '@ant-design/icons'
 import {styled} from '@linaria/react'
 import {Space} from 'antd'
 import cx from 'classnames'
-import {compact, curry, difference, flatten, isEqual, keys, range, union, uniq, values} from 'lodash'
+import {compact, difference, flatten, range, union, uniq, values} from 'lodash'
 import {
   CSSProperties,
   memo,
@@ -29,8 +29,8 @@ import {doneAppLoading, startAppLoading, toggleOntologyNode} from './store/ui'
 import {PaneFilter, SearchResultState} from './store/workspace'
 import {calculateFilteredCodes} from './treeUtils'
 import useChangeSet from './useChangeSet'
-import {flushSync} from 'react-dom'
-import {preview} from 'vite'
+
+const MAX_CODES = 100000
 
 export type VCodeTreeHandle = {
   getAllInclusiveCodes: () => number[]
@@ -127,13 +127,13 @@ const VirtualCodeTree: React.FC<VirtualCodeTreeProps & {height: number}> = ({
     if ((ontologyCodes ?? []).length > 0) {
       filterCodes(true)
     }
-  }, [filters, searchResults])
+  }, [ontology.name, filters, searchResults, ontologyCodes])
 
   useEffect(() => {
     if ((ontologyCodes ?? []).length > 0) {
-      filterCodes()
+      filterCodes(true)
     }
-  }, [ontology.name, computedValue, openNodes, ontologyCodes])
+  }, [computedValue, openNodes])
 
   const toggleCode = useCallback(
     (code: LocalCode, codelistId: string, checked: boolean, flag: CodeSelectFlag) => {
@@ -195,34 +195,46 @@ const VirtualCodeTree: React.FC<VirtualCodeTreeProps & {height: number}> = ({
     return 26.84
   }
 
+  const codesToRender = codes.length > MAX_CODES ? codes.slice(0, MAX_CODES) : codes
+  const isTruncated = codes.length > MAX_CODES
+  const listHeight = !isTruncated ? height : height - 56
+
   return (
-    <List
-      ref={listRef}
-      className="treeview"
-      height={height}
-      itemCount={codes.length}
-      itemSize={getItemSize}
-      width={'100%'}>
-      {({index, style}) => {
-        const code = codes[index]
-        return (
-          <ListCode
-            key={code.id}
-            code={code}
-            nextCode={codes.at(index + 1)}
-            search={search}
-            concepts={concepts}
-            toggleCode={toggleCode}
-            colors={colors}
-            animals={animals}
-            open={(openNodes[ontology.name] ?? []).includes(code.id)}
-            style={style}
-            isChecked={(concept, code) => computedValue[concept].has(code)}
-            isIntermediate={(concept, code) => computedValue[concept].has(code)}
-          />
-        )
-      }}
-    </List>
+    <>
+      {isTruncated && (
+        <TruncatedWarning>
+          Showing first {MAX_CODES.toLocaleString()} codes only due to browser limits. Please use the search or filters
+          to see more.
+        </TruncatedWarning>
+      )}
+      <List
+        ref={listRef}
+        className="treeview"
+        height={listHeight}
+        itemCount={codesToRender.length}
+        itemSize={getItemSize}
+        width={'100%'}>
+        {({index, style}) => {
+          const code = codesToRender[index]
+          return (
+            <ListCode
+              key={code.id}
+              code={code}
+              nextCode={codesToRender.at(index + 1)}
+              search={search}
+              concepts={concepts}
+              toggleCode={toggleCode}
+              colors={colors}
+              animals={animals}
+              open={(openNodes[ontology.name] ?? []).includes(code.id)}
+              style={style}
+              isChecked={(concept, code) => computedValue[concept].has(code)}
+              isIntermediate={(concept, code) => computedValue[concept].has(code)}
+            />
+          )
+        }}
+      </List>
+    </>
   )
 }
 
@@ -382,6 +394,14 @@ export const ListCode: React.FC<ListCodeProps & {style: CSSProperties}> = memo(
   },
   areEqual,
 )
+
+const TruncatedWarning = styled.div`
+  padding: 16px;
+  color: #b00;
+  background: #fffbe6;
+  text-align: center;
+  line-height: 24px;
+`
 
 const Label = styled.div`
   display: flex;
