@@ -27,8 +27,6 @@ export const versionCheck = async () => {
       console.log('Clearing local cache')
       upgraded = true
       await localforage.clear()
-      await db.codes.clear()
-      await db.ontologies.clear()
       await localforage.setItem('__v', {b: backendVersion, f: frontendVersion})
     }
   }
