@@ -6,6 +6,7 @@ type ManifestEntry = {
   num_codes: number
   name: string
   ontology_id: string
+  is_linear: boolean
 }
 type Manifest = {
   files: ManifestEntry[]
@@ -63,6 +64,7 @@ const syncDB = async ({baseUrl, tokenLookup, onProgress}: syncDBOptions) => {
     // build ontology
     const ontology: Partial<LocalOntology> = {}
     ontology.root_code_ids = []
+    ontology.is_linear = entry.is_linear
     const csvStream = processStream.pipeThrough<LocalCode[]>(new CSVTransformStream(true))
 
     let cx = 0
@@ -70,7 +72,9 @@ const syncDB = async ({baseUrl, tokenLookup, onProgress}: syncDBOptions) => {
       if (!ontology.name) {
         ontology.name = x[0].ontology_id
       }
-      ontology.root_code_ids.push(...x.filter((c) => c.path.length === 1).map((c) => c.id))
+      if (!ontology.is_linear) {
+        ontology.root_code_ids.push(...x.filter((c) => c.path.length === 1).map((c) => c.id))
+      }
       cx += x.length
       progress += x.length
       onProgress?.(Math.round((progress / totalCount) * 100))

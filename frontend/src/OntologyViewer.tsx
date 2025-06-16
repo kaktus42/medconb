@@ -50,10 +50,14 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
   const [codesAreStale, setCodesAreStale] = useState(false)
   const ontologies = useLiveQuery(() => db.ontologies.toArray())
   const codes = useLiveQuery(() => {
+    console.time(`queryOntologyCodes`)
     return db.codes
       .where({ontology_id: pane.ontology})
       .toArray()
-      .finally(() => setCodesAreStale(false))
+      .finally(() => {
+        console.timeEnd(`queryOntologyCodes`)
+        setCodesAreStale(false)
+      })
   }, [pane.ontology])
   const ontology = (ontologies ?? []).find((o) => o.name === pane.ontology)
 
