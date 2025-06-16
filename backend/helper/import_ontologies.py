@@ -226,7 +226,24 @@ def _main(session: Session):
     # build the corresponding ontology table
     ontology_table_data_stmt = select(
         code_table.c.ontology_id.label("id"),
-        array_agg(text("DISTINCT path[1] ORDER BY path[1]")).label("root_code_ids"),
+        (
+            func.cardinality(
+                array_agg(text("DISTINCT cardinality(path) ORDER BY cardinality(path)"))
+            )
+            == 1
+        ).label("is_linear"),
+        case(
+            (
+                func.cardinality(
+                    array_agg(
+                        text("DISTINCT cardinality(path) ORDER BY cardinality(path)")
+                    )
+                )
+                == 1,
+                "{}",
+            ),
+            else_=array_agg(text("DISTINCT path[1] ORDER BY path[1]")),
+        ).label("root_code_ids"),
     ).group_by(code_table.c.ontology_id)
 
     if ontology_table.c.keys() != ontology_table_data_stmt.selected_columns.keys():
