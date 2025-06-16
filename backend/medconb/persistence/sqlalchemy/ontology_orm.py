@@ -1,6 +1,14 @@
 from typing import Any
 
-from sqlalchemy import Column, Integer, String, Table, UniqueConstraint, inspect
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Integer,
+    String,
+    Table,
+    UniqueConstraint,
+    inspect,
+)
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import registry
 
@@ -13,6 +21,7 @@ ontology = Table(
     "ontology",
     mapper_registry.metadata,
     Column("id", String, primary_key=True),
+    Column("is_linear", Boolean),
     Column("root_code_ids", ARRAY(Integer), nullable=False),
 )
 

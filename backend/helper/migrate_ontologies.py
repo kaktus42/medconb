@@ -17,11 +17,13 @@ from pathlib import Path
 from typing import cast
 
 from sqlalchemy import (
+    Boolean,
     Column,
     Integer,
     String,
     Table,
     Values,
+    case,
     column,
     create_engine,
     func,
@@ -29,7 +31,7 @@ from sqlalchemy import (
     literal,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, array_agg
+from sqlalchemy.dialects.postgresql import ARRAY, aggregate_order_by, array_agg
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import Session as SQLSession
@@ -87,6 +89,7 @@ ontology_new_tbl = Table(
     "ontology_new",
     mapper_registry.metadata,
     Column("id", String, primary_key=True),
+    Column("is_linear", Boolean),
     Column("root_code_ids", ARRAY(Integer), nullable=False),
 )
 
@@ -539,7 +542,19 @@ def _main(session: Session):  # noqa R901 - too complex
             -1 * func.row_number().over(order_by=ontology_new_tbl.c.id).label("id"),
             literal(None).label("ontology_id_old"),
             ontology_new_tbl.c.id.label("ontology_id"),
-            ontology_new_tbl.c.root_code_ids.label("children_ids"),
+            case(
+                (
+                    ontology_new_tbl.c.is_linear,
+                    select(
+                        array_agg(
+                            aggregate_order_by(
+                                code_new_tbl.c.id, code_new_tbl.c.id.asc()
+                            )
+                        )
+                    ).where(code_new_tbl.c.ontology_id == ontology_new_tbl.c.id),
+                ),
+                else_=ontology_new_tbl.c.root_code_ids,
+            ).label("children_ids"),
         ),
         # overall root node with ontology root nodes as children
         select(

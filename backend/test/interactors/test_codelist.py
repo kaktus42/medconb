@@ -110,7 +110,7 @@ def _reset_session(session: MockSession, user: d.User):
             create_Codelist(id=id_, name=f"CL {id_}", container=collection.to_spec())
         )
 
-    session.add(d.Ontology(id="ICD-10-CM", root_code_ids=[1]))
+    session.add(d.Ontology(id="ICD-10-CM", is_linear=False, root_code_ids=[1]))
     reader = csv.DictReader(StringIO(code_data), strict=True)
     for row in reader:
         row["id"] = int(row["id"])

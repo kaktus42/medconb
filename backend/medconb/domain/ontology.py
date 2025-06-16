@@ -7,6 +7,7 @@ from typing import Optional, Protocol, runtime_checkable
 @dataclass
 class Ontology:
     id: str
+    is_linear: bool
     root_code_ids: list[int]
 
     @property

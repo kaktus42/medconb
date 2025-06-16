@@ -182,8 +182,8 @@ class TestAzureADAuthenticator:
             _owner_id=_u_id(1),
         )
         conn_session.ontology_repository.get_all.return_value = [
-            d.Ontology("ICD-10-CM", []),
-            d.Ontology("ICD-9-CM", []),
+            d.Ontology("ICD-10-CM", False, []),
+            d.Ontology("ICD-9-CM", False, []),
         ]
 
         conn_session.property_repository.get_all.return_value = [

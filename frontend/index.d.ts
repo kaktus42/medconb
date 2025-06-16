@@ -55,6 +55,7 @@ export type LocalCode = {
 
 export type LocalOntology = {
   name: string
+  is_linear: boolean
   root_code_ids: number[]
 }
 

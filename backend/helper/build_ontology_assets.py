@@ -35,6 +35,13 @@ def main():
         *[f"  {ontology_id}: {count}\n" for ontology_id, count in counts.items()],
     )
 
+    root_counts = pd.read_sql_query(
+        "SELECT ontology_id, COUNT(*) FROM code"
+        "WHERE(cardinality(path) = 1) GROUP BY ontology_id",
+        conn_str,
+        index_col="ontology_id",
+    ).to_dict(orient="dict")["count"]
+
     for ontology_id in counts:
         df = pd.read_sql_query(
             f"SELECT * FROM code WHERE ontology_id = '{ontology_id}' ORDER BY id ASC",
@@ -59,6 +66,7 @@ def main():
                 "name": f"codes_{ontology_id}.csv.gz",
                 "num_codes": counts[ontology_id],
                 "ontology_id": ontology_id,
+                "is_linear": root_counts[ontology_id] == counts[ontology_id],
             }
             for ontology_id in counts
         }

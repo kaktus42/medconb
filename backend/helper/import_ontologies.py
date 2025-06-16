@@ -13,17 +13,19 @@ It does not change any data in the code sets.
 import os
 
 from sqlalchemy import (
+    Boolean,
     Column,
     Integer,
     String,
     Table,
+    case,
     create_engine,
     func,
     insert,
     literal,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, array_agg
+from sqlalchemy.dialects.postgresql import ARRAY, aggregate_order_by, array_agg
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from sqlalchemy.schema import CreateTable, DropTable
@@ -50,6 +52,7 @@ ontology_new_tbl = Table(
     "ontology_new",
     mapper_registry.metadata,
     Column("id", String, primary_key=True),
+    Column("is_linear", Boolean),
     Column("root_code_ids", ARRAY(Integer), nullable=False),
 )
 
@@ -146,7 +149,19 @@ def _main(session: Session):
         select(
             literal(None).label("id_old"),
             -1 * func.row_number().over(order_by=ontology_new_tbl.c.id).label("id"),
-            ontology_new_tbl.c.root_code_ids.label("children_ids"),
+            case(
+                (
+                    ontology_new_tbl.c.is_linear,
+                    select(
+                        array_agg(
+                            aggregate_order_by(
+                                code_new_tbl.c.id, code_new_tbl.c.id.asc()
+                            )
+                        )
+                    ).where(code_new_tbl.c.ontology_id == ontology_new_tbl.c.id),
+                ),
+                else_=ontology_new_tbl.c.root_code_ids,
+            ).label("children_ids"),
         ),
         # overall root node with ontology root nodes as children
         select(
