@@ -36,7 +36,7 @@ def main():
     )
 
     root_counts = pd.read_sql_query(
-        "SELECT ontology_id, COUNT(*) FROM code"
+        "SELECT ontology_id, COUNT(*) FROM code "
         "WHERE(cardinality(path) = 1) GROUP BY ontology_id",
         conn_str,
         index_col="ontology_id",
