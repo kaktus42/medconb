@@ -752,7 +752,8 @@ def remove_invalid_codes(session: SQLSession):
             continue
 
         print(
-            f"Remove {len(ids)} invalid codes from ontology {ontology_id} from codelists"
+            f"Remove {len(ids)} invalid codes "
+            f"from ontology {ontology_id} from codelists"
         )
 
         changesets: list[d.Changeset] = session.scalars(
