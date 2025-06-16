@@ -12,5 +12,5 @@ class TestCodeParentId:
 
 
 def test_ontology_name_is_id():
-    ontology = d.Ontology("ICD-9", [])
+    ontology = d.Ontology("ICD-9", False, [])
     assert ontology.name == ontology.id
