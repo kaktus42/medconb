@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
   const [registrationErrorMsg, setRegistrationErrorMsg] = useState('')
 
   const config = getConfig()
-  const msalInstance = setupMsalAuth(config)
+  const msalInstance = setupMsalAuth(config, setToken, setLoginType)
 
   const getLoginInfoAsync = async () => {
     if (config.loginOptions.dev && config.dev_token && qd.dev_auth) {
@@ -173,7 +173,11 @@ if (location.search)
       ;(qd[k] = qd[k] || []).push(v)
     })
 
-const setupMsalAuth = (config: ApplicationConfig) => {
+const setupMsalAuth = (
+  config: ApplicationConfig,
+  setToken: (token: string) => void,
+  setLoginType: (type: string) => void,
+) => {
   if (!config.loginOptions.msal) return null
   if (!config.msal) throw new Error('MSAL auth is enabled but config is not given')
 
@@ -188,7 +192,7 @@ const setupMsalAuth = (config: ApplicationConfig) => {
   msalInstance.addEventCallback(async (message: any) => {
     if (message.eventType === EventType.LOGIN_SUCCESS) {
       const info = jwt_decode<any>(message.payload.accessToken)
-      console.log(await localforage.getItem('__msal_sub'))
+      console.log('MSAL login success', info)
       const storedSub: string | null = await localforage.getItem('__msal_sub')
 
       // TODO: do this user check for all other login types
@@ -198,6 +202,9 @@ const setupMsalAuth = (config: ApplicationConfig) => {
         await localforage.removeItem('persist:__MEDCONB__UI')
       }
       await localforage.setItem('__msal_sub', info.sub)
+
+      setToken(message.payload.accessToken)
+      setLoginType('msal')
     }
   })
 
