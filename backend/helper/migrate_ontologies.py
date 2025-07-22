@@ -11,11 +11,18 @@ It writes to the tables code and ontology.
 It updates all existing changesets to the new ids.
 """
 
+import logging
 import os
 from collections import defaultdict
 from pathlib import Path
 from typing import cast
 
+import medconb.domain as d
+from medconb.persistence.sqlalchemy import create_sessionmaker
+from medconb.persistence.sqlalchemy.ontology_orm import code as code_table
+from medconb.persistence.sqlalchemy.ontology_orm import mapper_registry
+from medconb.persistence.sqlalchemy.ontology_orm import ontology as ontology_table
+from medconb.persistence.sqlalchemy.orm import changeset as changeset_table
 from sqlalchemy import (
     Boolean,
     Column,
@@ -36,13 +43,6 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import Session as SQLSession
 from sqlalchemy.schema import CreateTable, DropTable
-
-import medconb.domain as d
-from medconb.persistence.sqlalchemy import create_sessionmaker
-from medconb.persistence.sqlalchemy.ontology_orm import code as code_table
-from medconb.persistence.sqlalchemy.ontology_orm import mapper_registry
-from medconb.persistence.sqlalchemy.ontology_orm import ontology as ontology_table
-from medconb.persistence.sqlalchemy.orm import changeset as changeset_table
 
 # This sql code creates the input tables for this script from the target
 # table from the UMLS pipeline.
@@ -72,6 +72,13 @@ CREATE TABLE "ontology_new" AS (
 );
 
 """
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s.%(msecs)03d %(levelname)s %(name)s %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 
 code_new_tbl = Table(
@@ -107,7 +114,7 @@ id_map_table = Table(
 )
 
 
-conn_str = os.getenv("CONN_STR", "postgresql://postgres:password@localhost/")
+conn_str = os.getenv("CONN_STR", "postgresql+psycopg://postgres:password@localhost/")
 db_name = os.getenv("DB_NAME", "medconb")
 
 engine_medconb = create_engine(
@@ -122,9 +129,12 @@ ontology_map: dict[str, list[str]] = {
     # old ontology: [new ontologies]
     "ICD-10-CM": ["ICD-10-CM"],
     "ICD-10-PCS": ["ICD-10-PCS"],
-    "ICD-9-CM": ["ICD-9-CM", "ICD-9-PCS"],
+    "ICD-9-CM": ["ICD-9-CM"],
+    "ICD-9-PCS": ["ICD-9-PCS"],
+    "ATC": ["ATC"],
     "CPT": ["CPT"],
     "HCPCS": ["HCPCS"],
+    "SNOMEDCT_US": ["SNOMEDCT_US"],
 }
 
 
@@ -466,6 +476,18 @@ def main():
         _main(session)
 
 
+def create_tables(session: Session):
+    exec_text(session, "DROP TABLE IF EXISTS code_bak")
+    exec_text(session, "CREATE TABLE code_bak AS (SELECT * FROM code)")
+    exec_text(session, "DROP TABLE IF EXISTS ontology_bak")
+    exec_text(session, "CREATE TABLE ontology_bak AS (SELECT * FROM ontology)")
+
+    exec(session, DropTable(id_map_table, if_exists=True))
+    exec(session, CreateTable(id_map_table, if_not_exists=True))
+
+    session.commit()
+
+
 def exec_text(session: Session, sql: str):
     return exec(session, text(sql))
 
@@ -479,25 +501,24 @@ def _main(session: Session):  # noqa R901 - too complex
     session.bind_table(ontology_new_tbl, engine_ontology)
     session.bind_table(id_map_table, engine_ontology)
 
-    exec_text(session, "LOCK TABLE code")
-    exec_text(session, "LOCK TABLE code_new")
-    exec_text(session, "LOCK TABLE ontology")
-    exec_text(session, "LOCK TABLE ontology_new")
+    logger.info("Starting migration")
 
-    exec_text(session, "DROP TABLE IF EXISTS code_bak")
-    exec_text(session, "CREATE TABLE code_bak AS (SELECT * FROM code)")
-    exec_text(session, "DROP TABLE IF EXISTS ontology_bak")
-    exec_text(session, "CREATE TABLE ontology_bak AS (SELECT * FROM ontology)")
+    with Session(engine_ontology) as _session:
+        logger.info("Creating backups")
+        create_tables(_session)
 
-    exec(session, DropTable(id_map_table, if_exists=True))
-    exec(session, CreateTable(id_map_table, if_not_exists=True))
-
+    # this writes in medconb and is not reversible
+    # should be fine as the list of invalid codes is carfully created
+    logger.info("Removing invalid codes in existing codelists")
     remove_invalid_codes(session)
 
+    logger.info("Running assertions on existing codelists")
     assert_referenced_codes_exist_in_new_table(session)
     assert_all_old_codes_exist_in_new_table(
         session
     )  # may be commented out if you know what you do after manual check
+
+    logger.info("Assertions passed")
 
     values_data = [(o_old, o) for o_old, os in ontology_map.items() for o in os]
     ontology_map_query = select(
@@ -576,20 +597,21 @@ def _main(session: Session):  # noqa R901 - too complex
         ),
     )
 
-    print("Get adjacency matrix ...")
-    res_adj = exec(session, adj_stmt).fetchall()
+    logger.info("Get adjacency matrix ...")
 
+    res_adj = exec(session, adj_stmt).fetchall()
     adj_matrix = {r[1]: r for r in res_adj}
 
-    print("number of nodes:", len(adj_matrix))
+    logger.info("number of nodes: %d", len(adj_matrix))
     id_map = {}
 
-    print("Start DFS ...")
+    logger.info("Start DFS ...")
     dfs(adj_matrix, id_map, [], 0)
 
-    print("Create mapping table ...")
-    exec(session, insert(id_map_table).values(list(id_map.values())))
+    logger.info("Write mapping table ...")
+    dump_mapping_table(id_map)
 
+    logger.info("Create new code and ontology tables ...")
     # build the new code table
     code_table_data_stmt = (
         select(
@@ -635,7 +657,7 @@ def _main(session: Session):  # noqa R901 - too complex
                     )
                 )
                 == 1,
-                "{}",
+                [],
             ),
             else_=array_agg(text("DISTINCT path[1] ORDER BY path[1]")),
         ).label("root_code_ids"),
@@ -649,7 +671,6 @@ def _main(session: Session):  # noqa R901 - too complex
         ontology_table.c, ontology_table_data_stmt
     )
 
-    print("Store new code and ontology tables ...")
     exec(session, DropTable(code_table, if_exists=True))
     exec(session, CreateTable(code_table))
     exec(session, insert_codes_stmt)
@@ -659,7 +680,7 @@ def _main(session: Session):  # noqa R901 - too complex
     exec(session, insert_ontologies_stmt)
 
     # Finally, use the mapping table to translate all codesets
-    print("Update codesets ...")
+    logger.info("Update existing codelists ...")
     cs_map_stmt = select(
         id_map_table.c.id_old, id_map_table.c.id_new, id_map_table.c.ontology_id
     ).where(id_map_table.c.id_old.is_not(None))
@@ -884,6 +905,33 @@ def dfs(adj_matrix, id_map, path, node) -> int:
     )
 
     return last_id
+
+
+def dump_mapping_table(id_map):
+    connection = engine_ontology.raw_connection()
+    cursor = connection.cursor()
+
+    records = list(id_map.values())
+
+    with cursor.copy(
+        "COPY id_map (id_old, ontology_id_old, id, id_new, ontology_id, path, children_ids, last_descendant_id) FROM STDIN"
+    ) as copy:
+        for record in records:
+            copy.write_row(
+                [
+                    record["id_old"],
+                    record["ontology_id_old"],
+                    record["id"],
+                    record["id_new"],
+                    record["ontology_id"],
+                    record["path"],
+                    record["children_ids"],
+                    record["last_descendant_id"],
+                ]
+            )
+
+    connection.commit()
+    connection.close()
 
 
 if __name__ == "__main__":
