@@ -14,7 +14,6 @@ from .base import (
     update_property_bag,
 )
 from .codelist import (
-    Author,
     Changeset,
     Codelist,
     CodelistID,

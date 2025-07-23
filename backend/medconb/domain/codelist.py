@@ -114,20 +114,6 @@ class Changeset:
 
 
 @dataclass
-class Author(User):
-    @staticmethod
-    def from_user(user: "User"):
-        return Author(
-            id=user.id,
-            email=user.email,
-            password_hash=user.password_hash,
-            external_id=user.external_id,
-            name=user.name,
-            workspace=Workspace(WorkspaceID(int=0)),
-        )
-
-
-@dataclass
 class Commit:
     """
     A Commit of a codelist is a differential data structure that

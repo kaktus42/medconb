@@ -226,12 +226,12 @@ def resolve_codes(
 
 
 @commit.field("author")
-def resolve_commit_author(commit: d.Commit, info) -> d.Author:
+def resolve_commit_author(commit: d.Commit, info) -> d.User:
     session: Session = info.context["request"].scope["db_session"]
 
     user = session.user_repository.get(commit.author_id)
     if user is None:
-        return d.Author(
+        return d.User(
             id=session.user_repository.new_id(),
             email=None,
             password_hash=None,
@@ -240,7 +240,7 @@ def resolve_commit_author(commit: d.Commit, info) -> d.Author:
             workspace=d.Workspace(d.WorkspaceID(int=0)),
         )
 
-    return d.Author.from_user(user)
+    return user
 
 
 @commit.field("createdAt")

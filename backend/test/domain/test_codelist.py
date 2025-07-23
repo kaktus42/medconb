@@ -342,23 +342,6 @@ class TestAddCommit:
         assert codelist.transient_commit is None
 
 
-def test_author_from_user():
-    a = d.Author.from_user(
-        d.User(
-            id=42,
-            external_id="ABC",
-            name="DEF",
-            email=None,
-            password_hash=None,
-            workspace=None,
-        )
-    )
-
-    assert a.id == 42
-    assert a.external_id == "ABC"
-    assert a.name == "DEF"
-
-
 class TestDeleteCodelist:
     def test_not_present_in_container(self):
         container = d.Collection(
