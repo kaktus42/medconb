@@ -1,9 +1,9 @@
 from sqlalchemy import create_mock_engine
 
-from medconb.persistence.sqlalchemy.orm import mapper_registry
 from medconb.persistence.sqlalchemy.ontology_orm import (
     mapper_registry as mapper_registry_ontology,
 )
+from medconb.persistence.sqlalchemy.orm import mapper_registry
 
 
 def metadata_dump(sql, *multiparams, **params):

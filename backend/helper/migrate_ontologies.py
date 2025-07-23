@@ -17,12 +17,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import cast
 
-import medconb.domain as d
-from medconb.persistence.sqlalchemy import create_sessionmaker
-from medconb.persistence.sqlalchemy.ontology_orm import code as code_table
-from medconb.persistence.sqlalchemy.ontology_orm import mapper_registry
-from medconb.persistence.sqlalchemy.ontology_orm import ontology as ontology_table
-from medconb.persistence.sqlalchemy.orm import changeset as changeset_table
 from sqlalchemy import (
     Boolean,
     Column,
@@ -43,6 +37,13 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import Session as SQLSession
 from sqlalchemy.schema import CreateTable, DropTable
+
+import medconb.domain as d
+from medconb.persistence.sqlalchemy import create_sessionmaker
+from medconb.persistence.sqlalchemy.ontology_orm import code as code_table
+from medconb.persistence.sqlalchemy.ontology_orm import mapper_registry
+from medconb.persistence.sqlalchemy.ontology_orm import ontology as ontology_table
+from medconb.persistence.sqlalchemy.orm import changeset as changeset_table
 
 # This sql code creates the input tables for this script from the target
 # table from the UMLS pipeline.
@@ -914,7 +915,8 @@ def dump_mapping_table(id_map):
     records = list(id_map.values())
 
     with cursor.copy(
-        "COPY id_map (id_old, ontology_id_old, id, id_new, ontology_id, path, children_ids, last_descendant_id) FROM STDIN"
+        "COPY id_map (id_old, ontology_id_old, id, id_new, ontology_id, path,"
+        " children_ids, last_descendant_id) FROM STDIN"
     ) as copy:
         for record in records:
             copy.write_row(

@@ -6,9 +6,7 @@ from operator import add
 from typing import TYPE_CHECKING, AbstractSet, Iterable
 from uuid import UUID
 
-from .base import WorkspaceID
 from .container import ContainerSpec, ItemType
-from .user import User, Workspace
 
 if TYPE_CHECKING:
     from .base import UserID
