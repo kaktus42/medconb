@@ -17,6 +17,7 @@ const Editor = ({onChange, ...rest}: ComponentProps<typeof BaseEditor>) => {
         ...theme,
         blockToolbarSelectedBackground: '#f1f2f5',
         fontFamily: 'Segoe UI',
+        zIndex: 1010,
       }}
     />
   )
