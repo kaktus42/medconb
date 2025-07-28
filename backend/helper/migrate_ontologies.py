@@ -8,12 +8,13 @@ This data has not correctly ordered IDs.
 
 It writes to the tables code and ontology.
 
-It updates all existing changesets to the new ids.
+It updates all existing changeset to the new ids.
 """
 
 import logging
 import os
 from collections import defaultdict
+from itertools import islice
 from pathlib import Path
 from typing import cast
 
@@ -790,6 +791,18 @@ def remove_invalid_codes(session: SQLSession):
             cs.code_ids_removed = d.SetOfCodeIds(set(cs.code_ids_removed) - ids)
 
 
+MAX_PARAMS = 50000
+
+
+def chunked(iterable, size):
+    it = iter(iterable)
+    while True:
+        chunk = list(islice(it, size))
+        if not chunk:
+            break
+        yield chunk
+
+
 def assert_referenced_codes_exist_in_new_table(session: SQLSession):
     """
     collects all codes referenced in the changesets and makes sure
@@ -801,6 +814,7 @@ def assert_referenced_codes_exist_in_new_table(session: SQLSession):
 
     in that: distinguish between ontologies
     """
+
     changesets: list[d.Changeset] = session.scalars(
         select(d.Changeset, changeset_table)
     ).fetchall()
@@ -812,10 +826,13 @@ def assert_referenced_codes_exist_in_new_table(session: SQLSession):
         )
 
     for ontology_id, ids in referenced_code_ids_by_ontology.items():
-        codes_stmt = select(func.upper(d.Code.code)).where(
-            (d.Code.ontology_id == ontology_id) & d.Code.id.in_(ids)
-        )
-        codes = set(session.scalars(codes_stmt).fetchall())
+        codes = set()
+        ids = list(ids)
+        for id_chunk in chunked(ids, MAX_PARAMS):
+            codes_stmt = select(func.upper(d.Code.code)).where(
+                (d.Code.ontology_id == ontology_id) & d.Code.id.in_(id_chunk)
+            )
+            codes.update(session.scalars(codes_stmt).fetchall())
         print(
             f"Used {len(codes)} codes from ontology {ontology_id}"
             # ":\n", codes
@@ -825,11 +842,13 @@ def assert_referenced_codes_exist_in_new_table(session: SQLSession):
             ids
         ), f" -> Not all {len(ids)} ids referenced are present in the code table"
 
-        new_codes_stmt = select(func.upper(code_new_tbl.c.code)).where(
-            code_new_tbl.c.ontology_id.in_(ontology_map[ontology_id])
-            & func.upper(code_new_tbl.c.code).in_(codes)
-        )
-        new_codes = set(session.scalars(new_codes_stmt).fetchall())
+        new_codes = set()
+        for code_chunk in chunked(list(codes), MAX_PARAMS):
+            new_codes_stmt = select(func.upper(code_new_tbl.c.code)).where(
+                code_new_tbl.c.ontology_id.in_(ontology_map[ontology_id])
+                & func.upper(code_new_tbl.c.code).in_(code_chunk)
+            )
+            new_codes.update(session.scalars(new_codes_stmt).fetchall())
 
         if len(new_codes) != len(codes):
             missing = codes - new_codes
@@ -867,11 +886,13 @@ def assert_all_old_codes_exist_in_new_table(session: SQLSession):
         codes -= codes_allow_removal.get(ontology_id, set())
         codes -= codes_missing_in_new.get(ontology_id, set())
 
-        new_codes_stmt = select(func.upper(code_new_tbl.c.code)).where(
-            code_new_tbl.c.ontology_id.in_(ontology_map[ontology_id])
-            & func.upper(code_new_tbl.c.code).in_(codes)
-        )
-        new_codes = set(session.scalars(new_codes_stmt).fetchall())
+        new_codes = set()
+        for code_chunk in chunked(list(codes), MAX_PARAMS):
+            new_codes_stmt = select(func.upper(code_new_tbl.c.code)).where(
+                code_new_tbl.c.ontology_id.in_(ontology_map[ontology_id])
+                & func.upper(code_new_tbl.c.code).in_(code_chunk)
+            )
+            new_codes.update(session.scalars(new_codes_stmt).fetchall())
 
         if len(new_codes) != len(codes):
             missing = codes - new_codes
