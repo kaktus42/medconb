@@ -273,8 +273,7 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
     // return <Menu key={pane.id} onClick={handleMenuClick} items={menuItems} />
   }, [onPaneAdd, codelists])
 
-  const onSearch = useCallback(
-    async (f: Filter) => {
+  const onSearch = async (f: Filter) => {
       // dispatch(setPaneBusy({paneId: pane.id}))
       dispatch(startAppLoading())
       try {
@@ -316,12 +315,23 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
         dispatch(doneAppLoading())
         // dispatch(clearPaneBusy({paneId: pane.id}))
       }
-    },
-    [pane.id, pane.filter, pane.ontology],
-  )
+  }
 
   const handleSearchClick = (f: Filter) => {
-    if (f.code.length > 0 || (f.description ?? '').length > 3) {
+    // if nothing changed, don't trigger a search
+    if (pane.filter.code === f.code && pane.filter.mode === f.mode && pane.filter.description === f.description) {
+      return
+    }
+
+    if (f.code === '' && f.description === '') {
+      dispatch(
+        clearSearch({
+          paneId: pane.id,
+        }),
+      )
+      return
+    }
+
       onSearch(f)
         .then((filteredCodes) => {
           if (filteredCodes) {
@@ -357,13 +367,6 @@ const OntologyViewer: React.FC<OntologyViewerProps> = ({onPaneAdd, onPaneClose, 
           }
         })
         .catch(console.log)
-    } else {
-      dispatch(
-        clearSearch({
-          paneId: pane.id,
-        }),
-      )
-    }
   }
 
   const visibleCodelists = useMemo(

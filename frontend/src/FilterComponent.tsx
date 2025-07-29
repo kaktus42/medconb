@@ -1,5 +1,5 @@
 import {styled} from '@linaria/react'
-import {Button, Input, Space} from 'antd'
+import {Button, Input, Space, Tooltip} from 'antd'
 import {useEffect, useState} from 'react'
 import RegexInput, {Mode} from './components/RegexInput'
 import InlineHelp from './InlineHelp'
@@ -21,14 +21,27 @@ const FilterComponent: React.FC<FilterComponentProps> = ({onFilterChange, value}
     setInternalValue(value)
   }, [value])
 
-  const clearSearch = () => {
+  const showDescriptionError =
+    iv.description.trim().length > 0 && iv.description.trim().length <= 3 && iv.code.trim() === ''
+  const isSearchDisabled = showDescriptionError
+
+  const clearDescription = () => {
     setInternalValue({...iv, description: ''})
-    onFilterChange({...iv, description: ''}) // not iv, because state is not yet updated
+    if (iv.code.trim() === '') {
+      onFilterChange({...iv, description: ''})
+    }
   }
 
   const clearRegex = () => {
     setInternalValue({...iv, code: ''})
-    onFilterChange({...iv, code: ''}) // not iv, because state is not yet updated
+    if (iv.description.trim() === '') {
+      onFilterChange({...iv, code: ''})
+    }
+  }
+
+  const clearSearch = () => {
+    setInternalValue({code: '', mode: Mode.POSIX, description: ''})
+    onFilterChange({code: '', mode: Mode.POSIX, description: ''})
   }
 
   return (
@@ -43,29 +56,33 @@ const FilterComponent: React.FC<FilterComponentProps> = ({onFilterChange, value}
           mode={iv.mode}
           value={iv.code}
         />
-        <Input
-          size="small"
-          onChange={(e) => {
-            setInternalValue({...iv, description: e.target.value})
-          }}
-          placeholder="Search Description"
-          value={iv.description}
-          allowClear
-          onPressEnter={() => onFilterChange(iv)}
-          onClear={clearSearch}
-        />
+        <Tooltip
+          title={showDescriptionError ? 'Please enter at least 4 characters for description search' : ''}
+          open={showDescriptionError}
+          color="red">
+          <Input
+            size="small"
+            onChange={(e) => {
+              setInternalValue({...iv, description: e.target.value})
+            }}
+            placeholder="Search Description (min. 4 characters)"
+            value={iv.description}
+            allowClear
+            onPressEnter={() => onFilterChange(iv)}
+            onClear={clearDescription}
+            status={showDescriptionError ? 'error' : undefined}
+          />
+        </Tooltip>
         <Button
           onClick={() => {
             onFilterChange(iv)
           }}
-          size="small">
+          size="small"
+          disabled={isSearchDisabled}>
           Search
         </Button>
         {(iv.code.trim() !== '' || iv.description.trim() !== '') && (
-          <Button
-            type="dashed"
-            onClick={() => onFilterChange({code: '', mode: Mode.POSIX, description: ''})}
-            size="small">
+          <Button type="dashed" onClick={clearSearch} size="small">
             Clear Search
           </Button>
         )}
