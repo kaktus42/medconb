@@ -2,7 +2,7 @@ import {createRoot} from 'react-dom/client'
 import 'react-reflex/styles.css'
 import './app.less'
 
-import {Result} from 'antd'
+import {Result, Spin} from 'antd'
 import * as Sentry from '@sentry/react'
 import {v4 as uuidv4} from 'uuid'
 import {tryGetConfig, getConfig, ApplicationConfig, MsalConfig} from './config'
@@ -11,6 +11,8 @@ import {AuthProvider} from './AuthProvider'
 import AppProvider from './AppProvider'
 import {cacheSizes} from '@apollo/client/utilities'
 import {ResultStatusType} from 'antd/lib/result'
+import MainLoader from './components/MainLoader'
+import Witties from './components/Witties'
 
 cacheSizes['inMemoryCache.executeSelectionSet'] = 1_000_000
 cacheSizes['inMemoryCache.executeSubSelectedArray'] = 500_000
@@ -23,7 +25,17 @@ const MaintenanceModeBanner = errorBanner("I'm currently under maintenance", 'in
 const ConfigLoadErrorBanner = errorBanner('Loading the configuration failed')
 const InitErrorBanner = errorBanner('Initializing the app failed')
 
-const initApp = async () => {
+const LoadingScreen: React.FC<React.PropsWithChildren> = ({children}) => (
+  <MainLoader>
+    <Spin size="large" />
+    <Witties />
+    <br />
+    {children}
+  </MainLoader>
+)
+
+const initApp = async (renderApp: (app: JSX.Element) => void) => {
+  renderApp(<LoadingScreen>Loading Configuration</LoadingScreen>)
   const configTry = tryGetConfig()
 
   if (!configTry.success) {
@@ -37,8 +49,10 @@ const initApp = async () => {
     return MaintenanceModeBanner
   }
 
+  renderApp(<LoadingScreen>Initializing Error Handling</LoadingScreen>)
   const sessionId = setupMonitoring(config.glitchtipDSN)
 
+  renderApp(<LoadingScreen>Checking for updates</LoadingScreen>)
   if (await versionCheck()) {
     console.log('Version upgrade done.')
   }
@@ -65,7 +79,7 @@ const renderApp = (app: JSX.Element) => {
   root.render(app)
 }
 
-initApp()
+initApp(renderApp)
   .then(renderApp)
   .catch((error) => {
     console.log(error)

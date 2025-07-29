@@ -116,7 +116,7 @@ export const AppProvider: React.FC<{sessionId: string}> = ({sessionId}) => {
   return (
     <_ApolloProvider client={apolloClient}>
       <ErrorHandlerContext.Provider value={{onError: uiErrorHandler, sessionId}}>
-        <AppContext.Provider value={{apolloCachePersistor: apolloCachePersistor, reduxPersistor}}>
+        <AppContext.Provider value={{apolloCachePersistor, reduxPersistor}}>
           <Provider store={store}>
             <PersistGate loading={null} persistor={reduxPersistor}>
               <App showVersion={config.show_version} />
