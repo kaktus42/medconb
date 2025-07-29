@@ -94,7 +94,7 @@ const CodeListDetails: React.FC<CodeListDetailsProps> = ({
           </div>
 
           <Space style={{marginLeft: 10}}>
-            <Button size="small" type="text" icon={<EllipsisOutlined />} onClick={console.log} />
+            {/* TODO: Implement <Button size="small" type="text" icon={<EllipsisOutlined />} onClick={console.log} />  */}
             <Button
               size="small"
               type="text"
@@ -134,6 +134,7 @@ const CodeListDetails: React.FC<CodeListDetailsProps> = ({
                 disableExtensions={['checkbox_item', 'checkbox_list', 'container_notice']}
                 defaultValue={codelist.description}
                 onChange={debouncedOnEditorChange}
+                placeholder="Enter description here..."
               />
             </div>
           )}

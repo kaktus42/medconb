@@ -194,15 +194,18 @@ const CodeListSummary: React.FC<CodeListSummaryProps> = ({indicator, collectionI
   const menuItems = useMemo(() => {
     if (hasChanges) {
       return [
+        {label: 'Copy ID', key: 'copy_id'},
         {label: 'Create Checkpoint', key: 'save'},
         {label: 'Revert to Checkpoint', key: 'discard', danger: true},
       ]
     }
-    return []
+    return [{label: 'Copy ID', key: 'copy_id'}]
   }, [hasChanges])
 
   const handleMenuClick = (info: MenuInfo) => {
-    if (info.key === 'discard') {
+    if (info.key === 'copy_id') {
+      navigator.clipboard.writeText(codelist.id)
+    } else if (info.key === 'discard') {
       void handleDiscardChanges()
     } else if (info.key === 'save') {
       setSaving(true)
