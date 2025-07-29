@@ -190,7 +190,9 @@ def create_sessionmaker(
 
     if cache_client:
         code_repo = CachedCodeRepository(sm=init_sm, client=cache_client)
-        startup_hooks.append(code_repo.warmup)
+        startup_hooks.append(code_repo.warmup)  # type: ignore
+        # https://github.com/python/mypy/issues/17198
+        # can't upgrade mypy above 1.10.1, because of sqlalchemy (waiting for v2.1)
 
     sm = sql_sessionmaker(
         bind=engine_medconb,
