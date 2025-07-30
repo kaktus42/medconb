@@ -19,7 +19,6 @@ dependencies:
   - setuptools=80.9.0
   - tk=8.6.13
   - wheel=0.45.1
-  - xz=5.2.6
   - pip:
     - annotated-types==0.7.0
     - anyio==4.9.0
